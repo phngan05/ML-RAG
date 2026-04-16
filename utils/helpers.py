@@ -74,3 +74,4 @@ def push_processed_file(src_path: str, dest_path: str):
             dest = os.path.join(dest_path, new_name)
             
         shutil.move(src, dest)    
+    

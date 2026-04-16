@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_opendataloader_pdf import OpenDataLoaderPDFLoader
+from langchain_community.document_loaders import TextLoader
 from langchain_core.documents import Document
 from utils.helpers import get_logger, contains_code
 from config import DocumentType
@@ -42,7 +43,7 @@ class DocumentLoader:
         return []
 
     def _load_pdf(self, path: Path) -> list[Document]:
-        pages = PyPDFLoader(str(path)).load()
+        pages = OpenDataLoaderPDFLoader(str(path)).load()
         for doc in pages:
             doc_type = (
                 DocumentType.CODE if contains_code(doc.page_content)

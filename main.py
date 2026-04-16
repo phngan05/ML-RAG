@@ -82,14 +82,13 @@ class MLKnowledgeRAG:
 # ======================================================================== #
 
 if __name__ == "__main__":
-    # rag = MLKnowledgeRAG(groq_api_key=os.environ.get("groq_API_KEY"))
+    rag = MLKnowledgeRAG(groq_api_key=os.environ.get("groq_API_KEY"))
     
-    # # ── Ingest documents ──────────────────────────────────────────────────
-    # stats = rag.ingest("./data", "./processed_data")
-    # print(f"Ingestion complete: {stats}")
+    # ── Ingest documents ──────────────────────────────────────────────────
+    stats = rag.ingest("./data", "./processed_data")
+    print(f"Ingestion complete: {stats}")
 
-    # # ── Example queries with explicit methods ─────────────────────────────
-    # question = input("Enter question: ")
-    # result = rag.query(question)
-    # rag.print_result(result)
-    print("Hello World!")
+    # ── Example queries with explicit methods ─────────────────────────────
+    question = input("Enter question: ")
+    result = rag.query(question)
+    rag.print_result(result)
