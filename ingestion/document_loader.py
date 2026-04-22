@@ -38,6 +38,8 @@ class DocumentLoader:
                 return self._load_pdf(path)
             if path.suffix.lower() == ".py":
                 return self._load_python(path)
+            if path.suffix.lower() == ".ipynb":
+                return self._load_ipynb(path)
         except Exception as exc:
             logger.warning("Skipping '%s': %s", path, exc)
         return []
