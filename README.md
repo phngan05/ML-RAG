@@ -106,22 +106,29 @@ An iterative refinement loop ensures high-quality responses:
 
 ```id="f1d8k3"
 project/
-│── backend/
-│   ├── main.py
-│   ├── rag/
-│   ├── retriever/
-│   ├── self_rag/
-│   └── utils/
+│── ingestion/
+│   ├── chunkers.py
+│   ├── document_loader.py
+│   └── pipeline.py
 │
-│── frontend/
-│   ├── app/
-│   ├── components/
-│   └── services/
+│── retrieval/
+│   ├── query_translator.py
+│   ├── vector_stores.py
+│   ├── router.py
+│   └── retriever.py
+│
+│── utils/
+│   └── helpers.py
+│
+│── generation/
+│   └── self_rag.py
 │
 │── data/
-│   ├── pdf/
-│   └── code/
+│  
+│── main.py
+│── config.py
 │
+│── requirements.txt
 │── README.md
 ```
 
