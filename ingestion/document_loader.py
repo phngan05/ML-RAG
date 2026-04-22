@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 from langchain_opendataloader_pdf import OpenDataLoaderPDFLoader
-from langchain_community.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader, NotebookLoader
 from langchain_core.documents import Document
 from utils.helpers import get_logger, contains_code
 from config import DocumentType
@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 class DocumentLoader:
     """Load PDF and Python source files, tagging each with its type."""
 
-    SUPPORTED_SUFFIXES = {".pdf", ".py"}
+    SUPPORTED_SUFFIXES = {".pdf", ".py", ".ipynb"}
 
     def load(self, path: str | Path) -> list[Document]:
         path = Path(path)
@@ -64,5 +64,20 @@ class DocumentLoader:
                 source=str(path),
                 file_type="py",
                 doc_type=DocumentType.CODE.value,
+            )
+        return docs
+    
+    
+    def _load_ipynb(self, path: Path) -> list[Document]:
+        docs = NotebookLoader(str(path), include_outputs=False).load()
+        for doc in docs:
+            doc_type = (
+                DocumentType.CODE if contains_code(doc.page_content)
+                else DocumentType.TEXT
+            )
+            doc.metadata.update(
+                source=str(path),
+                file_type="ipynb",
+                doc_type=doc_type.value,
             )
         return docs
