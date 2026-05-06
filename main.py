@@ -1,3 +1,4 @@
+import asyncio
 import os
 from config import RAGConfig, QueryTranslationMethod
 from ingestion.pipeline import IngestionPipeline
@@ -50,13 +51,13 @@ class MLKnowledgeRAG:
         pipeline = IngestionPipeline(self._cfg, self._vsm)
         return pipeline.run(data_path, processed_data_path)
 
-    def query(
+    async def query(
         self,
         question: str,
         method: QueryTranslationMethod = QueryTranslationMethod.AUTO,
     ) -> dict:
         """Ask a question; returns answer, sources, and grading metadata."""
-        return self._self_rag.answer(question, method=method)
+        return await self._self_rag.answer(question, method=method)
 
     def print_result(self, result: dict) -> None:
         print("\n" + "=" * 70)
@@ -90,5 +91,5 @@ if __name__ == "__main__":
 
     # ── Example queries with explicit methods ─────────────────────────────
     question = input("Enter question: ")
-    result = rag.query(question)
+    result = asyncio.run(rag.query(question))
     rag.print_result(result)
