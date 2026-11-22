@@ -288,7 +288,7 @@ streamlit run app/streamlit_app.py
 streamlit run app/streamlit_app.py
 ```
 
-Configuration (API keys, chat model, temperature, retrieval settings and query‑translation method) is read from `.env`/environment variables; the UI has no settings sidebar. Answers show the retrieved sources plus the Self‑RAG grading trace. The **Knowledge base ingestion** panel submits one background job per supported file (`.pdf`, `.py`, `.ipynb`) and shows persistent job status.
+Configuration (API keys, chat model, temperature, retrieval settings and query‑translation method) is read from `.env`/environment variables; the UI is focused on chat, retrieved sources, and the Self‑RAG grading trace. Document ingestion runs separately through the Celery worker.
 
 ### Run with Docker Compose
 

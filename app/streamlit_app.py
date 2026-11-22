@@ -16,8 +16,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.backend import (  # noqa: E402
-    DEFAULT_DATA_PATH,
-    DEFAULT_PROCESSED_PATH,
     RAGBackend,
     settings_from_env,
 )
@@ -75,9 +73,6 @@ def render_message(message: dict) -> None:
 settings = settings_from_env()
 
 st.title("📚 Machine Learning Knowledge RAG")
-st.caption(
-    f"Self-RAG over a text + code knowledge base, powered by `{settings.model_name}`."
-)
 
 missing = settings.missing_credentials()
 if missing:
@@ -95,37 +90,8 @@ except Exception as exc:
     st.stop()
 
 # ---------------------------------------------------------------------- #
-# Knowledge base + chat
+# Chat
 # ---------------------------------------------------------------------- #
-
-with st.expander("Knowledge base ingestion"):
-    data_path = st.text_input("Data folder", DEFAULT_DATA_PATH, key="data_path")
-    processed_path = st.text_input(
-        "Processed folder", DEFAULT_PROCESSED_PATH, key="processed_path"
-    )
-    st.caption("Documents are queued individually. A Celery worker must be running.")
-    if st.button("Queue documents for ingestion"):
-        try:
-            jobs = backend.enqueue_ingestion(data_path, processed_path)
-        except Exception as exc:
-            logger.exception("Unable to queue ingestion")
-            st.error(f"Unable to queue documents: {exc}")
-        else:
-            st.success(f"Queued {len(jobs)} document(s).")
-            for job in jobs:
-                st.caption(f"{job['document_id']} · task {job['task_id']}")
-
-    if st.button("Refresh ingestion status"):
-        try:
-            jobs = backend.ingestion_jobs()
-        except Exception as exc:
-            logger.exception("Unable to read ingestion status")
-            st.error(f"Unable to read ingestion status: {exc}")
-        else:
-            if jobs:
-                st.dataframe(jobs, use_container_width=True, hide_index=True)
-            else:
-                st.info("No ingestion jobs have been submitted.")
 
 messages = st.session_state.setdefault("messages", [])
 
@@ -140,11 +106,10 @@ for message in messages:
 
 if not messages:
     st.info(
-        "Ask something like “How does backpropagation work?” "
-        "or “Show me a Keras ConvNet example.”"
+        "Ask something about Machine Learning.”"
     )
 
-question = st.chat_input("Ask a machine learning question…")
+question = st.chat_input("Enter your question…")
 if question:
     messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
