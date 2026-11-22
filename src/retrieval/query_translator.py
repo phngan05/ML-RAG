@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
-from config import RAGConfig, QueryTranslationMethod
-from utils.helpers import get_logger, reciprocal_rank_fusion, deduplicate_docs
+from src.core.config import RAGConfig, QueryTranslationMethod
+from src.utils.helpers import get_logger, reciprocal_rank_fusion, deduplicate_docs
 
 logger = get_logger(__name__)
 
@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 # ======================================================================== #
 
 class BaseQueryTranslator(ABC):
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         self._llm = llm
 
     @abstractmethod
@@ -45,7 +45,7 @@ class RAGFusionTranslator(BaseQueryTranslator):
         Question: {question}"""
     )
 
-    def __init__(self, llm: ChatGroq, n: int = 4):
+    def __init__(self, llm: ChatOpenAI, n: int = 4):
         super().__init__(llm)
         self._n = n
         self._chain = self._PROMPT | self._llm
@@ -75,7 +75,7 @@ class StepbackTranslator(BaseQueryTranslator):
         Specific question: {question}"""
     )
 
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         super().__init__(llm)
         self._chain = self._PROMPT | self._llm
 
@@ -104,7 +104,7 @@ class HyDETranslator(BaseQueryTranslator):
         Question: {question}"""
     )
 
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         super().__init__(llm)
         self._chain = self._PROMPT | self._llm
 
@@ -139,7 +139,7 @@ class QueryTranslationMethod_Classifier:
         Question: {question}"""
     )
 
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         self._chain = self._PROMPT | llm
 
     async def classify(self, query: str) -> QueryTranslationMethod:
@@ -162,7 +162,7 @@ class QueryTranslatorFactory:
     @staticmethod
     def create(
         method: QueryTranslationMethod,
-        llm: ChatGroq,
+        llm: ChatOpenAI,
         n_fusion: int = 4,
     ) -> BaseQueryTranslator:
         mapping = {

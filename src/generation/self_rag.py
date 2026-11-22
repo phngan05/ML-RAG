@@ -3,13 +3,13 @@ import json
 from typing import List
 
 from pydantic import BaseModel, Field
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 
-from retrieval.retriever import Retriever
-from config import RAGConfig, QueryTranslationMethod
-from utils.helpers import get_logger
+from src.retrieval.retriever import Retriever
+from src.core.config import RAGConfig, QueryTranslationMethod
+from src.utils.helpers import get_logger
 
 logger = get_logger(__name__)
 
@@ -41,7 +41,7 @@ class RelevanceGrader:
         """
     )
 
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         self._chain = self._PROMPT | llm.with_structured_output(RelevanceIndices)
 
     async def grade(self, question: str, documents: List[Document]) -> List[int]:
@@ -104,7 +104,7 @@ class CombinedGrader:
             )
     
 
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         self._chain = self._PROMPT | llm.with_structured_output(EvaluationResult)
 
     async def grade(self, question: str, documents: List[Document], answer: str) -> EvaluationResult:
@@ -136,7 +136,7 @@ class AnswerGenerator:
         Answer:"""
     )
 
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         self._chain = self._PROMPT | llm
 
     async def generate(self, question: str, documents: List[Document]) -> str:
@@ -152,7 +152,7 @@ class SelfRAG:
     Optimized Self-RAG Orchestrator (Async & Structured)
     """
 
-    def __init__(self, cfg: RAGConfig, retriever: Retriever, llm: ChatGroq):
+    def __init__(self, cfg: RAGConfig, retriever: Retriever, llm: ChatOpenAI):
         self._cfg = cfg
         self._retriever = retriever
         self._generator = AnswerGenerator(llm)

@@ -1,10 +1,10 @@
 from pathlib import Path
 from langchain_core.documents import Document
-from ingestion.document_loader import DocumentLoader
-from ingestion.chunkers import AdaptiveChunker
-from retrieval.vector_stores import VectorStoreManager
-from config import RAGConfig
-from utils.helpers import get_logger, push_processed_file
+from src.ingestion.document_loader import DocumentLoader
+from src.ingestion.chunkers import AdaptiveChunker
+from src.retrieval.vector_stores import VectorStoreManager
+from src.core.config import RAGConfig
+from src.utils.helpers import get_logger, push_processed_file
 
 logger = get_logger(__name__)
 

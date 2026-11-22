@@ -1,15 +1,15 @@
 import asyncio
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 
-from retrieval.vector_stores import VectorStoreManager
-from retrieval.query_translator import (
+from src.retrieval.vector_stores import VectorStoreManager
+from src.retrieval.query_translator import (
     QueryTranslatorFactory,
     QueryTranslationMethod_Classifier,
 )
-from retrieval.router import QueryRouter
-from config import RAGConfig, QueryTranslationMethod
-from utils.helpers import (
+from src.retrieval.router import QueryRouter
+from src.core.config import RAGConfig, QueryTranslationMethod
+from src.utils.helpers import (
     get_logger, deduplicate_docs, reciprocal_rank_fusion
 )
 
@@ -22,7 +22,7 @@ class Retriever:
     Optimized for high-speed concurrent execution.
     """
 
-    def __init__(self, cfg: RAGConfig, vsm: VectorStoreManager, llm: ChatGroq):
+    def __init__(self, cfg: RAGConfig, vsm: VectorStoreManager, llm: ChatOpenAI):
         self._cfg = cfg
         self._vsm = vsm
         self._llm = llm

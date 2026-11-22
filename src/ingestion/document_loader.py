@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Optional
-from langchain_opendataloader_pdf import OpenDataLoaderPDFLoader
+from langchain_pymupdf4llm import PyMuPDF4LLMLoader
 from langchain_community.document_loaders import TextLoader, NotebookLoader
 from langchain_core.documents import Document
-from utils.helpers import get_logger, contains_code
-from config import DocumentType
+from src.utils.helpers import get_logger, contains_code
+from src.core.config import DocumentType
 
 logger = get_logger(__name__)
 
@@ -45,7 +45,7 @@ class DocumentLoader:
         return []
 
     def _load_pdf(self, path: Path) -> list[Document]:
-        pages = OpenDataLoaderPDFLoader(str(path)).load()
+        pages = PyMuPDF4LLMLoader(str(path)).load()
         for doc in pages:
             doc_type = (
                 DocumentType.CODE if contains_code(doc.page_content)

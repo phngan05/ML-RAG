@@ -1,9 +1,9 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 from langchain_core.documents import Document
-from config import RAGConfig
-from utils.helpers import get_logger
+from src.core.config import RAGConfig
+from src.utils.helpers import get_logger
 
 logger = get_logger(__name__)
 
@@ -19,8 +19,9 @@ class VectorStoreManager:
 
     def __init__(self, cfg: RAGConfig):
         self._cfg = cfg
-        self._embedding = HuggingFaceEmbeddings(
+        self._embedding = OpenAIEmbeddings(
             model=cfg.embedding.model_name,
+            api_key=cfg.openai_api_key,
         )
         self.pc = Pinecone(api_key = cfg.pinecone_api_key)
         self._stores: dict[str, PineconeVectorStore] = {

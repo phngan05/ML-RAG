@@ -1,7 +1,7 @@
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from config import DocumentType
-from utils.helpers import get_logger
+from src.core.config import DocumentType
+from src.utils.helpers import get_logger
 
 logger = get_logger(__name__)
 
@@ -23,7 +23,7 @@ class QueryRouter:
         Question: {question}"""
     )
 
-    def __init__(self, llm: ChatGroq):
+    def __init__(self, llm: ChatOpenAI):
         self._chain = self._PROMPT | llm
 
     async def route(self, query: str) -> list[str]:

@@ -3,8 +3,8 @@ from langchain_text_splitters import (
     PythonCodeTextSplitter,
 )
 from langchain_core.documents import Document
-from config import ChunkingConfig, DocumentType
-from utils.helpers import get_logger
+from src.core.config import ChunkingConfig, DocumentType
+from src.utils.helpers import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,12 +1,12 @@
 import asyncio
 import os
-from config import RAGConfig, QueryTranslationMethod
-from ingestion.pipeline import IngestionPipeline
-from retrieval.vector_stores import VectorStoreManager
-from retrieval.retriever import Retriever
-from generation.self_rag import SelfRAG
-from langchain_groq import ChatGroq
-from utils.helpers import get_logger
+from src.core.config import RAGConfig, QueryTranslationMethod
+from src.ingestion.pipeline import IngestionPipeline
+from src.retrieval.vector_stores import VectorStoreManager
+from src.retrieval.retriever import Retriever
+from src.generation.self_rag import SelfRAG
+from langchain_openai import ChatOpenAI
+from src.utils.helpers import get_logger
 from dotenv import load_dotenv
 
 logger = get_logger(__name__)
@@ -18,7 +18,7 @@ class MLKnowledgeRAG:
     Top-level facade. Wires all components together.
 
     Usage:
-        rag = MLKnowledgeRAG(groq_api_key="sk-...")
+        rag = MLKnowledgeRAG(openai_api_key="sk-...")
         rag.ingest("./data")
         result = rag.query("How does backpropagation work?")
         print(result["answer"])
@@ -26,19 +26,22 @@ class MLKnowledgeRAG:
 
     def __init__(
         self,
-        groq_api_key: str | None = None,
+        openai_api_key: str | None = None,
         pinecone_api_key: str | None = None,
         cfg: RAGConfig | None = None,
     ):
         self._cfg = cfg or RAGConfig()
-        self._cfg.groq_api_key = groq_api_key or os.environ.get("GROQ_API_KEY", "")
-        self._cfg.pinecone_api_key = pinecone_api_key or os.environ.get("PINECONE_API_KEY", "")
-        self._llm = ChatGroq(
-            model=self._cfg.llm.model_name,
-            temperature=self._cfg.llm.temperature,
-            max_tokens=self._cfg.llm.max_tokens,
-            api_key=self._cfg.groq_api_key,
+        self._cfg.openai_api_key = (
+            openai_api_key
+            or self._cfg.openai_api_key
+            or os.environ.get("OPENAI_API_KEY", "")
         )
+        self._cfg.pinecone_api_key = (
+            pinecone_api_key
+            or self._cfg.pinecone_api_key
+            or os.environ.get("PINECONE_API_KEY", "")
+        )
+        self._llm = self._build_llm()
 
         self._vsm = VectorStoreManager(self._cfg)
         self._retriever = Retriever(self._cfg, self._vsm, self._llm)
@@ -58,6 +61,35 @@ class MLKnowledgeRAG:
     ) -> dict:
         """Ask a question; returns answer, sources, and grading metadata."""
         return await self._self_rag.answer(question, method=method)
+
+    def reconfigure_llm(
+        self,
+        model_name: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> None:
+        """
+        Swap the chat model without reloading embeddings or vector stores.
+        Used when the UI changes LLM settings at runtime.
+        """
+        if model_name is not None:
+            self._cfg.llm.model_name = model_name
+        if temperature is not None:
+            self._cfg.llm.temperature = temperature
+        if max_tokens is not None:
+            self._cfg.llm.max_tokens = max_tokens
+
+        self._llm = self._build_llm()
+        self._retriever = Retriever(self._cfg, self._vsm, self._llm)
+        self._self_rag = SelfRAG(self._cfg, self._retriever, self._llm)
+
+    def _build_llm(self) -> ChatOpenAI:
+        return ChatOpenAI(
+            model=self._cfg.llm.model_name,
+            temperature=self._cfg.llm.temperature,
+            max_tokens=self._cfg.llm.max_tokens,
+            api_key=self._cfg.openai_api_key,
+        )
 
     def print_result(self, result: dict) -> None:
         print("\n" + "=" * 70)
@@ -83,7 +115,7 @@ class MLKnowledgeRAG:
 # ======================================================================== #
 
 if __name__ == "__main__":
-    rag = MLKnowledgeRAG(groq_api_key=os.environ.get("groq_API_KEY"))
+    rag = MLKnowledgeRAG(openai_api_key=os.environ.get("OPENAI_API_KEY"))
     
     # ── Ingest documents ──────────────────────────────────────────────────
     stats = rag.ingest("./data", "./processed_data")

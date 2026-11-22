@@ -18,7 +18,7 @@ class DocumentType(str, Enum):
 
 @dataclass
 class EmbeddingConfig:
-    model_name: str = "all-MiniLM-L6-v2"
+    model_name: str = "text-embedding-3-small"
     chunk_overlap: int = 100
 
 
@@ -26,12 +26,12 @@ class EmbeddingConfig:
 class VectorStoreConfig:
     text_index_name: str = "ml-text-knowledge"
     code_index_name: str = "ml-code-knowledge"
-    dimension: int = 384
+    dimension: int = 1536  # text-embedding-3-small output size
 
 
 @dataclass
 class LLMConfig:
-    model_name: str = "llama-3.3-70b-versatile"
+    model_name: str = "gpt-4o-mini"
     temperature: float = 0.0
     max_tokens: int = 2048
 
@@ -55,5 +55,5 @@ class RAGConfig:
     rag_fusion_queries: int = 3       # How many sub-queries to generate
     self_rag_max_retries: int = 2     # Self-RAG retry limit
     retrieval_k: int = 5              # Docs per retrieval
-    groq_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
     pinecone_api_key: Optional[str] = None
