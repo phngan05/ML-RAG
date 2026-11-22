@@ -1,12 +1,14 @@
+import threading
 from pathlib import Path
-from typing import Optional
+import fitz
 from langchain_pymupdf4llm import PyMuPDF4LLMLoader
-from langchain_community.document_loaders import TextLoader, NotebookLoader
+from langchain_community.document_loaders import NotebookLoader, PyPDFLoader, TextLoader
 from langchain_core.documents import Document
 from src.utils.helpers import get_logger, contains_code
 from src.core.config import DocumentType
 
 logger = get_logger(__name__)
+_MUPDF_LOCK = threading.Lock()
 
 
 class DocumentLoader:
@@ -16,36 +18,56 @@ class DocumentLoader:
 
     def load(self, path: str | Path) -> list[Document]:
         path = Path(path)
-        if path.is_dir():
-            return self._load_directory(path)
         return self._load_file(path)
 
     # ------------------------------------------------------------------ #
     # Private helpers
     # ------------------------------------------------------------------ #
 
-    def _load_directory(self, directory: Path) -> list[Document]:
-        docs: list[Document] = []
-        for file in sorted(directory.rglob("*")):
-            if file.suffix.lower() in self.SUPPORTED_SUFFIXES:
-                docs.extend(self._load_file(file))
-        logger.info("Loaded %d raw documents from '%s'", len(docs), directory)
-        return docs
-
     def _load_file(self, path: Path) -> list[Document]:
-        try:
-            if path.suffix.lower() == ".pdf":
-                return self._load_pdf(path)
-            if path.suffix.lower() == ".py":
-                return self._load_python(path)
-            if path.suffix.lower() == ".ipynb":
-                return self._load_ipynb(path)
-        except Exception as exc:
-            logger.warning("Skipping '%s': %s", path, exc)
-        return []
+        if path.suffix.lower() == ".pdf":
+            return self._load_pdf(path)
+        if path.suffix.lower() == ".py":
+            return self._load_python(path)
+        if path.suffix.lower() == ".ipynb":
+            return self._load_ipynb(path)
+        raise ValueError(f"Unsupported file type: {path.suffix}")
 
     def _load_pdf(self, path: Path) -> list[Document]:
-        pages = PyMuPDF4LLMLoader(str(path)).load()
+        pages: list[Document] = []
+        pymupdf_error: Exception | None = None
+        mupdf_diagnostics = ""
+        with _MUPDF_LOCK:
+            display_errors = fitz.TOOLS.mupdf_display_errors()
+            fitz.TOOLS.reset_mupdf_warnings()
+            fitz.TOOLS.mupdf_display_errors(False)
+            try:
+                pages = PyMuPDF4LLMLoader(str(path)).load()
+            except Exception as exc:
+                pymupdf_error = exc
+            finally:
+                mupdf_diagnostics = fitz.TOOLS.mupdf_warnings()
+                fitz.TOOLS.mupdf_display_errors(display_errors)
+
+        has_syntax_error = "syntax error" in mupdf_diagnostics.lower()
+        if (
+            pymupdf_error
+            or has_syntax_error
+            or not any(doc.page_content.strip() for doc in pages)
+        ):
+            reason = str(pymupdf_error or mupdf_diagnostics or "no extractable text")
+            logger.warning(
+                "PyMuPDF could not fully read '%s' (%s); retrying with pypdf",
+                path,
+                reason,
+            )
+            try:
+                pages = PyPDFLoader(str(path)).load()
+            except Exception as pypdf_error:
+                raise RuntimeError(
+                    f"PDF extraction failed with both PyMuPDF and pypdf: {path}"
+                ) from pypdf_error
+
         for doc in pages:
             doc_type = (
                 DocumentType.CODE if contains_code(doc.page_content)

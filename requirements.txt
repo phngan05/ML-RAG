@@ -9,3 +9,4 @@ pinecone
 pypdf
 dotenv
 streamlit
+celery[redis]

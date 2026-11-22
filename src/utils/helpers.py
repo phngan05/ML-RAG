@@ -1,8 +1,6 @@
 import re
 import logging
 from typing import Any
-import os
-import shutil
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,19 +57,3 @@ def reciprocal_rank_fusion(
 
     sorted_keys = sorted(scores, key=lambda k: scores[k], reverse=True)
     return [doc_map[k] for k in sorted_keys]
-def push_processed_file(src_path: str, dest_path: str):
-    os.makedirs(dest_path, exist_ok=True)
-    
-    files = [f for f in os.listdir(src_path) if os.path.isfile(os.path.join(src_path, f))]
-    for file_name in files:
-        src = os.path.join(src_path, file_name)
-        dest = os.path.join(dest_path, file_name)
-        
-        if os.path.exists(dest):
-            base, extension = os.path.splitext(file_name)
-            from datetime import datetime
-            new_name = f"{base}_{datetime.now().strftime('%Y%m%d_%H%M%S')}{extension}"
-            dest = os.path.join(dest_path, new_name)
-            
-        shutil.move(src, dest)    
-    

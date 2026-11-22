@@ -19,7 +19,7 @@ The system integrates advanced techniques such as **query translation**, **query
 
 * **PDF Processing**:
 
-  * Uses `PyMuPDF4LLM` (`langchain-pymupdf4llm`) to convert PDF content into Markdown format.
+  * Uses `PyMuPDF4LLM` (`langchain-pymupdf4llm`) to convert PDF content into Markdown format, with `pypdf` fallback for malformed PDFs.
   * Each page is classified as text or code; code-heavy pages are stored in the code vector database.
 
 * **Python Files (.py)**:
@@ -114,6 +114,7 @@ ML-RAG/
 │── src/
 │   ├── __init__.py
 │   ├── main.py                 # MLKnowledgeRAG facade + CLI entry point
+│   ├── celery_app.py           # Redis broker/backend and queue configuration
 │   │
 │   ├── core/
 │   │   ├── __init__.py
@@ -123,7 +124,9 @@ ML-RAG/
 │   │   ├── __init__.py
 │   │   ├── document_loader.py  # PDF / .py / .ipynb loading and type tagging
 │   │   ├── chunkers.py         # adaptive text + code chunking
-│   │   └── pipeline.py         # load → chunk → embed → upsert
+│   │   ├── pipeline.py         # load → chunk → embed → upsert
+│   │   ├── status_store.py     # persistent SQLite job status
+│   │   └── tasks.py            # idempotent Celery document task
 │   │
 │   ├── retrieval/
 │   │   ├── __init__.py
@@ -285,9 +288,44 @@ streamlit run app/streamlit_app.py
 streamlit run app/streamlit_app.py
 ```
 
-Configuration (API keys, chat model, temperature, retrieval settings and query‑translation method) is read from `.env`/environment variables; the UI has no settings sidebar. Answers show the retrieved sources plus the Self‑RAG grading trace, and a collapsed **Knowledge base ingestion** panel is available above the chat.
+Configuration (API keys, chat model, temperature, retrieval settings and query‑translation method) is read from `.env`/environment variables; the UI has no settings sidebar. Answers show the retrieved sources plus the Self‑RAG grading trace. The **Knowledge base ingestion** panel submits one background job per supported file (`.pdf`, `.py`, `.ipynb`) and shows persistent job status.
 
-> ⚠️ Ingestion **moves** the processed files from the data folder into the processed folder; keep that in mind before clicking *Ingest documents*.
+### Run with Docker Compose
+
+Create `.env` from `.env.example` and set `OPENAI_API_KEY` and
+`PINECONE_API_KEY`. The Compose stack starts Redis, the Streamlit app, and a
+dedicated Celery ingestion worker. The `data/` and `processed_data/` folders
+are shared with the containers; the SQLite job database persists under
+`processed_data/`.
+
+```bash
+docker compose up --build
+```
+
+Open <http://localhost:8501>. Stop the services with `docker compose down`.
+Redis data and the SQLite job database are persisted; `docker compose down -v`
+also removes the Redis volume.
+
+### Run the worker locally
+
+For running the app/worker outside Compose, set `CELERY_BROKER_URL`,
+`CELERY_RESULT_BACKEND` and `INGESTION_STATUS_DB` in `.env` (defaults are
+listed in `.env.example`). Start Redis, then run a worker from the project root:
+
+```bash
+celery -A src.celery_app:celery_app worker -Q ingestion -l INFO
+```
+
+On Windows, run the worker under WSL/Linux or use Celery's solo pool:
+
+```powershell
+celery -A src.celery_app:celery_app worker -Q ingestion -l INFO --pool=solo
+```
+
+The worker writes job state to the configured SQLite database, processes chunks
+in batches, and removes stale vectors for a document before retry-safe upserts.
+Files are moved to the processed folder only after successful ingestion; failed
+files remain in the input folder. Worker logs include per-document progress.
 
 ---
 

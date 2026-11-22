@@ -1,0 +1,51 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
+      PINECONE_API_KEY: ${PINECONE_API_KEY:?Set PINECONE_API_KEY in .env}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      INGESTION_STATUS_DB: /app/processed_data/ingestion_status.sqlite3
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./processed_data:/app/processed_data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    build:
+      context: .
+    restart: unless-stopped
+    command: ["celery", "-A", "src.celery_app:celery_app", "worker", "-Q", "ingestion", "-l", "INFO"]
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
+      PINECONE_API_KEY: ${PINECONE_API_KEY:?Set PINECONE_API_KEY in .env}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      INGESTION_STATUS_DB: /app/processed_data/ingestion_status.sqlite3
+    volumes:
+      - ./data:/app/data
+      - ./processed_data:/app/processed_data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:

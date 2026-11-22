@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any, Coroutine, TypeVar
 
 from src.core.config import LLMConfig, QueryTranslationMethod, RAGConfig
+from src.ingestion.status_store import IngestionStatusStore
+from src.ingestion.tasks import enqueue_document
 from src.main import MLKnowledgeRAG
 from src.utils.helpers import get_logger
 
@@ -188,6 +190,36 @@ class RAGBackend:
         stats = self._rag.ingest(str(source), str(processed_data_path))
         logger.info("Ingestion finished: %s", stats)
         return stats
+
+    def enqueue_ingestion(
+        self,
+        data_path: str | Path = DEFAULT_DATA_PATH,
+        processed_data_path: str | Path = DEFAULT_PROCESSED_PATH,
+    ) -> list[dict[str, str]]:
+        """Queue one asynchronous Celery task per supported input document."""
+        source = Path(data_path)
+        if not source.exists():
+            raise FileNotFoundError(f"Data path not found: {source}")
+        supported = {".pdf", ".py", ".ipynb"}
+        files = (
+            [source]
+            if source.is_file() and source.suffix.lower() in supported
+            else sorted(
+                path
+                for path in source.rglob("*")
+                if path.is_file() and path.suffix.lower() in supported
+            )
+        )
+        jobs = [
+            enqueue_document(path, processed_data_path)
+            for path in files
+        ]
+        logger.info("Queued %d document ingestion task(s)", len(jobs))
+        return jobs
+
+    @staticmethod
+    def ingestion_jobs(limit: int = 100) -> list[dict[str, Any]]:
+        return IngestionStatusStore().list_jobs(limit=limit)
 
     def ask(
         self,

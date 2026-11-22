@@ -33,10 +33,22 @@ class VectorStoreManager:
     # Public interface
     # ------------------------------------------------------------------ #
 
-    def add_documents(self, store_key: str, docs: list[Document]) -> None:
+    def add_documents(
+        self, store_key: str, docs: list[Document], ids: list[str] | None = None
+    ) -> None:
         self._validate_key(store_key)
-        self._stores[store_key].add_documents(docs)
+        self._stores[store_key].add_documents(docs, ids=ids)
         logger.info("Added %d docs to '%s' vector store", len(docs), store_key)
+
+    def delete_document(self, document_id: str) -> None:
+        """Remove all vectors for a document from both configured indexes."""
+        for store_key, index_name in (
+            ("text", self._cfg.vector_store.text_index_name),
+            ("code", self._cfg.vector_store.code_index_name),
+        ):
+            self._validate_key(store_key)
+            self.pc.Index(index_name).delete(filter={"document_id": document_id})
+            logger.info("Deleted stale vectors for document %s from %s", document_id, store_key)
 
     def similarity_search(
         self, store_key: str, query: str, k: int = 5

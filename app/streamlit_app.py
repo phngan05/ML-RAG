@@ -103,20 +103,29 @@ with st.expander("Knowledge base ingestion"):
     processed_path = st.text_input(
         "Processed folder", DEFAULT_PROCESSED_PATH, key="processed_path"
     )
-    st.caption(
-        "Ingestion moves source files from the data folder into the processed folder."
-    )
-    if st.button("Ingest documents"):
-        with st.spinner(f"Ingesting documents from `{data_path}`…"):
-            try:
-                stats = backend.ingest(data_path, processed_path)
-            except Exception as exc:
-                logger.exception("Ingestion failed")
-                st.error(f"Ingestion failed: {exc}")
+    st.caption("Documents are queued individually. A Celery worker must be running.")
+    if st.button("Queue documents for ingestion"):
+        try:
+            jobs = backend.enqueue_ingestion(data_path, processed_path)
+        except Exception as exc:
+            logger.exception("Unable to queue ingestion")
+            st.error(f"Unable to queue documents: {exc}")
+        else:
+            st.success(f"Queued {len(jobs)} document(s).")
+            for job in jobs:
+                st.caption(f"{job['document_id']} · task {job['task_id']}")
+
+    if st.button("Refresh ingestion status"):
+        try:
+            jobs = backend.ingestion_jobs()
+        except Exception as exc:
+            logger.exception("Unable to read ingestion status")
+            st.error(f"Unable to read ingestion status: {exc}")
+        else:
+            if jobs:
+                st.dataframe(jobs, use_container_width=True, hide_index=True)
             else:
-                st.success(
-                    f"Ingested {stats['text']} text chunks and {stats['code']} code chunks."
-                )
+                st.info("No ingestion jobs have been submitted.")
 
 messages = st.session_state.setdefault("messages", [])
 
