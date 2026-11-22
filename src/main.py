@@ -1,7 +1,6 @@
 import asyncio
 import os
 from src.core.config import RAGConfig, QueryTranslationMethod
-from src.ingestion.pipeline import IngestionPipeline
 from src.retrieval.vector_stores import VectorStoreManager
 from src.retrieval.retriever import Retriever
 from src.generation.self_rag import SelfRAG
@@ -51,6 +50,8 @@ class MLKnowledgeRAG:
 
     def ingest(self, data_path: str, processed_data_path: str) -> dict[str, int]:
         """Load, chunk, embed and store all documents at data_path."""
+        from src.ingestion.pipeline import IngestionPipeline
+
         pipeline = IngestionPipeline(self._cfg, self._vsm)
         return pipeline.run(data_path, processed_data_path)
 

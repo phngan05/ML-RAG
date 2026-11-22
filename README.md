@@ -155,7 +155,8 @@ ML-RAG/
 │── processed_data/             # documents are moved here after ingestion
 │
 │── .env.example
-│── requirements.txt
+│── requirements.txt            # minimal Streamlit runtime
+│── requirements.dev            # runtime + ingestion + Celery (local/Docker)
 │── README.md
 ```
 
@@ -177,12 +178,16 @@ cd ML-RAG
 
 ### 2. Set up virtual environment
 
+Install `requirements-dev.txt` for local development: it includes `requirements.txt`
+plus document ingestion, PDF parsing and Celery. `requirements.txt` contains only
+the Streamlit query runtime and is what Streamlit Cloud installs automatically.
+
 #### Windows (PowerShell)
 
 ```powershell
 python -m venv venv
 venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 #### Windows (CMD)
@@ -190,7 +195,7 @@ pip install -r requirements.txt
 ```cmd
 python -m venv venv
 venv\Scripts\activate.bat
-pip install -r requirements.txt
+pip install -r requirements.dev
 ```
 
 #### macOS / Linux
@@ -198,7 +203,7 @@ pip install -r requirements.txt
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.dev
 ```
 
 ---

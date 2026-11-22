@@ -16,7 +16,6 @@ from typing import Any, Coroutine, TypeVar
 
 from src.core.config import LLMConfig, QueryTranslationMethod, RAGConfig
 from src.ingestion.status_store import IngestionStatusStore
-from src.ingestion.tasks import enqueue_document
 from src.main import MLKnowledgeRAG
 from src.utils.helpers import get_logger
 
@@ -197,6 +196,9 @@ class RAGBackend:
         processed_data_path: str | Path = DEFAULT_PROCESSED_PATH,
     ) -> list[dict[str, str]]:
         """Queue one asynchronous Celery task per supported input document."""
+        # Celery and the document loaders are dev/worker-only dependencies.
+        from src.ingestion.tasks import enqueue_document
+
         source = Path(data_path)
         if not source.exists():
             raise FileNotFoundError(f"Data path not found: {source}")
