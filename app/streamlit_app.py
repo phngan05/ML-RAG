@@ -5,7 +5,9 @@ Run with:  streamlit run app/streamlit_app.py
 
 from __future__ import annotations
 
+import html
 import sys
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -25,6 +27,24 @@ logger = get_logger(__name__)
 
 st.set_page_config(page_title="ML Knowledge RAG", page_icon="📚", layout="wide")
 
+_REFERENCE_STYLE = """
+<style>
+.rag-ref {
+    display: inline-block;
+    padding: 0.05rem 0.4rem;
+    border-radius: 0.35rem;
+    cursor: help;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+.rag-ref:hover {
+    background-color: rgba(255, 193, 7, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.55);
+}
+</style>
+"""
+
+st.markdown(_REFERENCE_STYLE, unsafe_allow_html=True)
+
 
 @st.cache_resource(show_spinner="Connecting to the knowledge base…")
 def get_backend() -> RAGBackend:
@@ -32,38 +52,55 @@ def get_backend() -> RAGBackend:
     return RAGBackend(settings_from_env())
 
 
-def render_result_details(result: dict) -> None:
-    """Show retrieved sources and the Self-RAG grading trace for an answer."""
+def reference_entries(sources: list) -> list[tuple[str, str]]:
+    """Return unique (name, excerpt) pairs, keeping the first chunk per source."""
+    entries: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for doc in sources:
+        metadata = doc.metadata or {}
+        source = metadata.get("source")
+        name = Path(source).stem if source else "unknown"
+        if name in seen:
+            continue
+        seen.add(name)
+        excerpt = " ".join((doc.page_content or "").split())
+        entries.append((name, excerpt))
+    return entries
+
+
+def render_references(result: dict) -> None:
+    """List numbered references; the retrieved excerpt shows on hover."""
     sources = result.get("sources", [])
+    if not sources:
+        return
 
-    with st.expander(f"Sources ({len(sources)})"):
-        if not sources:
-            st.caption("No documents were retrieved for this question.")
-        for index, doc in enumerate(sources, 1):
-            metadata = doc.metadata or {}
-            st.markdown(
-                f"**[{index}] {metadata.get('doc_type', 'unknown')}** · "
-                f"`{metadata.get('source', 'unknown')}`"
-            )
-            st.caption(doc.page_content.strip()[:600] + "…")
+    items = []
+    for index, (name, excerpt) in enumerate(reference_entries(sources), 1):
+        items.append(
+            f'<span class="rag-ref" title="{html.escape(excerpt[:800], quote=True)}">'
+            f"[{index}] {html.escape(name)}</span>"
+        )
+    st.markdown("**References**")
+    st.markdown("<br>".join(items), unsafe_allow_html=True)
 
-    with st.expander("Self-RAG trace"):
-        cols = st.columns(3)
-        cols[0].metric("Translation", result.get("translation_method", "-"))
-        cols[1].metric("Attempts", result.get("attempts", "-"))
-        cols[2].metric("Sources", len(sources))
-        if result.get("warning"):
-            st.warning(result["warning"])
-        grading_log = result.get("grading_log", [])
-        if grading_log:
-            st.dataframe(grading_log, hide_index=True)
+
+def render_elapsed(elapsed: float | None) -> None:
+    """Show response time at the bottom-right of the message."""
+    if elapsed is None:
+        return
+    st.markdown(
+        "<div style='text-align:right;font-size:0.75rem;color:#888;'>"
+        f"{elapsed:.2f} s</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def render_message(message: dict) -> None:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if "result" in message:
-            render_result_details(message["result"])
+            render_references(message["result"])
+        render_elapsed(message.get("elapsed"))
 
 
 # ---------------------------------------------------------------------- #
@@ -106,7 +143,7 @@ for message in messages:
 
 if not messages:
     st.info(
-        "Ask something about Machine Learning.”"
+        "Ask something you want to know about Machine Learning."
     )
 
 question = st.chat_input("Enter your question…")
@@ -118,18 +155,22 @@ if question:
     with st.chat_message("assistant"):
         try:
             with st.spinner("Retrieving and verifying with Self-RAG…"):
+                started_at = time.perf_counter()
                 result = backend.ask(question)
+                elapsed = time.perf_counter() - started_at
         except Exception as exc:
             logger.exception("Query failed")
             st.error(f"Query failed: {exc}")
             messages.append({"role": "assistant", "content": f"⚠️ Query failed: {exc}"})
         else:
             st.markdown(result["answer"])
-            render_result_details(result)
+            render_references(result)
+            render_elapsed(elapsed)
             messages.append(
                 {
                     "role": "assistant",
                     "content": result["answer"],
                     "result": result,
+                    "elapsed": elapsed,
                 }
             )
